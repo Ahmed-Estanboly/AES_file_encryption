@@ -82,10 +82,34 @@ QByteArray generateAESIV(int size = 16) { // Default: 16 bytes for AES-CBC
 }
 // storing the encryption keys and IVs
 bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass) {
+    //checking if the password has been used before
+    QFile keysRetrieve("keys.txt");
+    if (!keysRetrieve.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QWidget window;
+        QMessageBox::information(&window, "Message",  "Failed to open the encryption keys storage.");
+        keysRetrieve.close();
+        return 0;
+    }
+    QTextStream in(&keysRetrieve);
+    //searching for the password in the key.txt
+    while (!in.atEnd()) {
+        QString s=in.readLine();
+        QString pass_possible = s.right(s.length() - s.lastIndexOf('/') - 1);
+        if(pass == pass_possible)
+        {
+            QWidget window;
+            QMessageBox::information(&window, "Message",  "ERROR: Password has been used before, please enter a new password");
+            keysRetrieve.close();
+            return 0;
+        }
+    }
+    keysRetrieve.close();
+    //appending the key to the storage file
     QFile file("keys.txt");
     if (!file.open(QIODevice::Append | QIODevice::Text)) { // Append mode
         QWidget window;
-        QMessageBox::information(&window, "Message",  "Failed to store AES key in ./key.txt");;
+        QMessageBox::information(&window, "Message",  "Failed to store AES key in ./key.txt");
+        file.close();
         return false;
     }
     //each line will represent AES_key/IV/Password
@@ -103,6 +127,7 @@ void MainWindow::on_pushButton_clicked()
         if (!file.open(QIODevice::ReadOnly)) {
             QWidget window;
             QMessageBox::information(&window, "Message",  "Failed to open the file.");
+            file.close();
             return;
         }
         QByteArray fileData = file.readAll();
@@ -120,19 +145,23 @@ void MainWindow::on_pushButton_clicked()
         int lastSlashIndex = filepath.lastIndexOf('/'); // Find the last '/'
         QString result = filepath.left(lastSlashIndex); // Keep everything before it
         result += "/Encrypted_" + filepath.right(filepath.length() - filepath.lastIndexOf('/') - 1);
+        //storing the AES key and IV mapped to a password for simple retrieval
+        if(!appendKeysToFile(key,IV,ui->passwordLineEdit->text()))
+        {
+            ui->progressBar->setValue(0);
+            return;
+        }
         QFile encryptedFile(result);
         if (encryptedFile.open(QIODevice::WriteOnly)) {
             encryptedFile.write(encryptedData);
             encryptedFile.close();
+            ui->progressBar->setValue(5);
+            QWidget window;
+            QMessageBox::information(&window, "Message",  "File Encrypted Successfully");
         } else {
             QWidget window;
             QMessageBox::information(&window, "Message",  "Failed to write the encrypted file.");
         }
-        //storing the AES key and IV mapped to a password for simple retrieval
-        appendKeysToFile(key,IV,ui->passwordLineEdit->text());
-        ui->progressBar->setValue(5);
-        QWidget window;
-        QMessageBox::information(&window, "Message",  "File Encrypted Successfully");
     }
     if(ui->decryptButton->isChecked())
     {
@@ -151,6 +180,8 @@ void MainWindow::on_pushButton_clicked()
         if (!keysRetrieve.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QWidget window;
             QMessageBox::information(&window, "Message",  "Failed to open the encryption keys storage.");
+            file.close();
+            return;
         }
         QTextStream in(&keysRetrieve);
         QString pass = ui->passwordLineEdit->text();
@@ -175,7 +206,10 @@ void MainWindow::on_pushButton_clicked()
         {
             QWidget window;
             QMessageBox::information(&window, "Message", "Incorrect Password");
+            keysRetrieve.close();
+            return;
         }
+        keysRetrieve.close();
         ui->progressBar->setValue(3);
         int lastSlashIndex = filepath.lastIndexOf('/'); // Find the last '/'
         QString result = filepath.left(lastSlashIndex); // Keep everything before it
@@ -187,12 +221,12 @@ void MainWindow::on_pushButton_clicked()
         if (decryptedFile.open(QIODevice::WriteOnly)) {
             decryptedFile.write(decryptedData);
             decryptedFile.close();
+            ui->progressBar->setValue(5);
+            QWidget window;
+            QMessageBox::information(&window, "Message",  "File Decrypted Successfully");
         } else {
             QWidget window;
             QMessageBox::information(&window, "Message",  "Failed to write the decrypted file");
         }
-        ui->progressBar->setValue(5);
-        QWidget window;
-        QMessageBox::information(&window, "Message",  "File Decrypted Successfully");
     }
 }

@@ -9,6 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(5);
     ui->progressBar->setValue(0);
+    ui->encryptButton->click();
 }
 
 MainWindow::~MainWindow()
@@ -58,12 +59,13 @@ QByteArray decryptAES(const QByteArray &ciphertext, const QByteArray &key, const
     decryptedData.resize(plaintext_len);  // Resize to actual plaintext length
     return decryptedData;
 }
-// AES Key generating function
-QByteArray generateAESKey(int size) {
+// AES Key generating function --- 16 bytes = 128 bits
+QByteArray generateAESKey(int size = 16) {
     QByteArray key(size, Qt::Uninitialized);
 
     if (RAND_bytes(reinterpret_cast<unsigned char*>(key.data()), size) != 1) {
-        std::cerr << "Error generating random key!" << std::endl;
+        QWidget window;
+        QMessageBox::information(&window, "Message",  "Error generating random AES encryption key!!!");
     }
 
     return key;
@@ -72,7 +74,8 @@ QByteArray generateAESKey(int size) {
 QByteArray generateAESIV(int size = 16) { // Default: 16 bytes for AES-CBC
     QByteArray iv(size, Qt::Uninitialized);
     if (RAND_bytes(reinterpret_cast<unsigned char*>(iv.data()), size) != 1) {
-        qDebug() << "Error generating random IV!";
+        QWidget window;
+        QMessageBox::information(&window, "Message",  "Error generating random IV!!!");
         return QByteArray(); // Return empty if generation fails
     }
     return iv;
@@ -81,14 +84,13 @@ QByteArray generateAESIV(int size = 16) { // Default: 16 bytes for AES-CBC
 bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass) {
     QFile file("keys.txt");
     if (!file.open(QIODevice::Append | QIODevice::Text)) { // Append mode
-        qDebug() << "Failed to open file for appending.";
+        QWidget window;
+        QMessageBox::information(&window, "Message",  "Failed to store AES key in ./key.txt");;
         return false;
     }
-
+    //each line will represent AES_key/IV/Password
     QTextStream out(&file);
-    out << key.toHex() << "/";
-    out << iv.toHex() << "/";
-    out << pass << '\n';
+    out << key.toHex() << "/" << iv.toHex() << "/" << pass << '\n';
     file.close();
     qDebug() << "Keys and IV appended successfully!";
     return true;
@@ -99,7 +101,6 @@ void MainWindow::on_pushButton_clicked()
     {
         QFile file(filepath);
         if (!file.open(QIODevice::ReadOnly)) {
-
             QWidget window;
             QMessageBox::information(&window, "Message",  "Failed to open the file.");
             return;
@@ -155,7 +156,7 @@ void MainWindow::on_pushButton_clicked()
         QString pass = ui->passwordLineEdit->text();
         ui->progressBar->setValue(2);
         QByteArray key,IV;
-        //searching foe the password in the key.txt file to retrieve the AES key and IV
+        //searching for the password in the key.txt file to retrieve the AES key and IV
         bool pass_found=0;
         while (!in.atEnd()) {
             QString s=in.readLine();
@@ -179,6 +180,7 @@ void MainWindow::on_pushButton_clicked()
         int lastSlashIndex = filepath.lastIndexOf('/'); // Find the last '/'
         QString result = filepath.left(lastSlashIndex); // Keep everything before it
         result += "/Decrypted_" + filepath.right(filepath.length() - filepath.lastIndexOf('/') - 1);
+        //Decrypting the file
         QFile decryptedFile(result);
         QByteArray decryptedData = decryptAES(fileData, key, IV);
         ui->progressBar->setValue(4);

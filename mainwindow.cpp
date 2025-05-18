@@ -24,7 +24,6 @@ void MainWindow::on_browseBotten_clicked()
     filepath=QFileDialog::getOpenFileName(this,tr("Open File"),desktop,"All Files (*.*)");
     ui->pathLineEdit->setText(filepath);
 }
-
 // Encrypt function using EVP
 QByteArray encryptAES(const QByteArray &plaintext, const QByteArray &key, const QByteArray &iv) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
@@ -100,7 +99,7 @@ bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass)
             QWidget window;
             QMessageBox::information(&window, "Message",  "ERROR: Password has been used before, please enter a new password");
             keysRetrieve.close();
-            return 0;
+            return false;
         }
     }
     keysRetrieve.close();
@@ -108,7 +107,7 @@ bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass)
     QFile file("keys.txt");
     if (!file.open(QIODevice::Append | QIODevice::Text)) { // Append mode
         QWidget window;
-        QMessageBox::information(&window, "Message",  "Failed to store AES key in ./key.txt");
+        QMessageBox::information(&window, "Message",  "Failed to store AES key in ./keys.txt");
         file.close();
         return false;
     }

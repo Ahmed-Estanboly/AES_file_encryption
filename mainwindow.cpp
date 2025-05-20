@@ -24,6 +24,7 @@ void MainWindow::on_browseBotten_clicked()
     filepath=QFileDialog::getOpenFileName(this,tr("Open File"),desktop,"All Files (*.*)");
     ui->pathLineEdit->setText(filepath);
 }
+
 // Encrypt function using EVP
 QByteArray encryptAES(const QByteArray &plaintext, const QByteArray &key, const QByteArray &iv) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
@@ -41,6 +42,7 @@ QByteArray encryptAES(const QByteArray &plaintext, const QByteArray &key, const 
     encryptedData.resize(ciphertext_len);  // Resize to actual ciphertext length
     return encryptedData;
 }
+
 // Decrypt function using EVP
 QByteArray decryptAES(const QByteArray &ciphertext, const QByteArray &key, const QByteArray &iv) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
@@ -58,6 +60,23 @@ QByteArray decryptAES(const QByteArray &ciphertext, const QByteArray &key, const
     decryptedData.resize(plaintext_len);  // Resize to actual plaintext length
     return decryptedData;
 }
+
+// SHA256 function
+QByteArray hashPasswordSHA256(const QString &password) {
+    QByteArray passwordBytes = password.toUtf8();
+    QByteArray hash(EVP_MAX_MD_SIZE, Qt::Uninitialized);
+    unsigned int hashLength = 0;
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx, EVP_sha256(), NULL);
+    EVP_DigestUpdate(ctx, passwordBytes.data(), passwordBytes.size());
+    EVP_DigestFinal_ex(ctx, reinterpret_cast<unsigned char*>(hash.data()), &hashLength);
+    EVP_MD_CTX_free(ctx);
+
+    hash.resize(hashLength); // Resize to actual hash length
+    return hash.toHex(); // Convert to hex for readability
+}
+
 // AES Key generating function --- 16 bytes = 128 bits
 QByteArray generateAESKey(int size = 16) {
     QByteArray key(size, Qt::Uninitialized);
@@ -69,6 +88,7 @@ QByteArray generateAESKey(int size = 16) {
 
     return key;
 }
+
 // Function to generate a random IV
 QByteArray generateAESIV(int size = 16) { // Default: 16 bytes for AES-CBC
     QByteArray iv(size, Qt::Uninitialized);
@@ -79,8 +99,11 @@ QByteArray generateAESIV(int size = 16) { // Default: 16 bytes for AES-CBC
     }
     return iv;
 }
+
 // storing the encryption keys and IVs
 bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass) {
+    //hashing the password
+    QByteArray hash = hashPasswordSHA256(pass);
     //checking if the password has been used before
     QFile keysRetrieve("keys.txt");
     if (!keysRetrieve.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -93,8 +116,8 @@ bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass)
     //searching for the password in the key.txt
     while (!in.atEnd()) {
         QString s=in.readLine();
-        QString pass_possible = s.right(s.length() - s.lastIndexOf('/') - 1);
-        if(pass == pass_possible)
+        QByteArray pass_possible = QByteArray::fromHex(s.right(s.length() - s.lastIndexOf('/') - 1).toUtf8());
+        if(hash == pass_possible)
         {
             QWidget window;
             QMessageBox::information(&window, "Message",  "ERROR: Password has been used before, please enter a new password");
@@ -113,11 +136,12 @@ bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass)
     }
     //each line will represent AES_key/IV/Password
     QTextStream out(&file);
-    out << key.toHex() << "/" << iv.toHex() << "/" << pass << '\n';
+    out << key.toHex() << "/" << iv.toHex() << "/" << hash.toHex() << '\n';
     file.close();
     qDebug() << "Keys and IV appended successfully!";
     return true;
 }
+
 void MainWindow::on_pushButton_clicked()
 {
     if(ui->encryptButton->isChecked())
@@ -184,14 +208,15 @@ void MainWindow::on_pushButton_clicked()
         }
         QTextStream in(&keysRetrieve);
         QString pass = ui->passwordLineEdit->text();
+        QByteArray hash = hashPasswordSHA256(pass);
         ui->progressBar->setValue(2);
         QByteArray key,IV;
         //searching for the password in the key.txt file to retrieve the AES key and IV
         bool pass_found=0;
         while (!in.atEnd()) {
             QString s=in.readLine();
-            QString pass_possible = s.right(s.length() - s.lastIndexOf('/') - 1);
-            if(pass == pass_possible)
+            QByteArray pass_possible = QByteArray::fromHex(s.right(s.length() - s.lastIndexOf('/') - 1).toUtf8());
+            if(hash == pass_possible)
             {
                 s = s.left(s.lastIndexOf('/'));
                 IV = QByteArray::fromHex(s.right(s.length() - s.lastIndexOf('/') - 1).toUtf8());
@@ -205,6 +230,7 @@ void MainWindow::on_pushButton_clicked()
         {
             QWidget window;
             QMessageBox::information(&window, "Message", "Incorrect Password");
+            ui->progressBar->setValue(0);
             keysRetrieve.close();
             return;
         }

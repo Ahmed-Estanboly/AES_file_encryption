@@ -144,6 +144,7 @@ bool appendKeysToFile(const QByteArray &key, const QByteArray &iv, QString pass)
 
 void MainWindow::on_pushButton_clicked()
 {
+    if(filepath=="") filepath = ui->pathLineEdit->text();
     if(ui->encryptButton->isChecked())
     {
         QFile file(filepath);

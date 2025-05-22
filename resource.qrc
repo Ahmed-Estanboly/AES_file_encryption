@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>FileEncrypterIcon.ico</file>
+    </qresource>
+</RCC>

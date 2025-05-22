@@ -25,3 +25,8 @@ LIBS += -LC:\Qt\Tools\OpenSSLv3\Win_x64\lib -llibcrypto -llibssl
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    resource.qrc
+
+RC_ICONS = FileEncrypterIcon.ico

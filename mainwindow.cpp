@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->progressBar->setMaximum(5);
     ui->progressBar->setValue(0);
     ui->encryptButton->click();
+    ui->passwordLineEdit->setEchoMode(QLineEdit::Password);
 }
 
 MainWindow::~MainWindow()
@@ -255,4 +256,5 @@ void MainWindow::on_pushButton_clicked()
             QMessageBox::information(&window, "Message",  "Failed to write the decrypted file");
         }
     }
+    ui->passwordLineEdit->clear();
 }

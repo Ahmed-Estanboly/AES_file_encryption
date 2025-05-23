@@ -157,6 +157,12 @@ void MainWindow::on_pushButton_clicked()
         }
         QByteArray fileData = file.readAll();
         file.close();
+        if(ui->passwordLineEdit->text() == "")
+        {
+            QWidget window;
+            QMessageBox::information(&window, "Message",  "Please enter a password");
+            return;
+        }
         ui->progressBar->setValue(1);
         //generating AES key
         QByteArray key = generateAESKey(16);
@@ -195,6 +201,12 @@ void MainWindow::on_pushButton_clicked()
         if (!file.open(QIODevice::ReadOnly)) {
             QWidget window;
             QMessageBox::information(&window, "Message",  "Failed to open the file.");
+            return;
+        }
+        if(ui->passwordLineEdit->text() == "")
+        {
+            QWidget window;
+            QMessageBox::information(&window, "Message",  "Please enter a password");
             return;
         }
         QByteArray fileData = file.readAll();
